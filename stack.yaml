@@ -1,0 +1,92 @@
+version: '3'
+
+services:
+  authenticationDB:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: ["CMD","mysqladmin","ping","-h","localhost"]
+      timeout: 10s
+      retries: 10
+    volumes:
+      - authdbdata:/var/lib/mysql
+    networks:
+      - myauthnet
+  authenticationDBMigration:
+    image: authenticationdbmigration_image
+    environment:
+      - DATABASE_URL=authenticationDB
+    networks:
+      - myauthnet
+  authentication:
+    image: authentication_image
+    environment:
+      - DATABASE_URL=authenticationDB
+    ports:
+      - 5002:5002
+    networks:
+      - myauthnet
+  electionsDB:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: [ "CMD","mysqladmin","ping","-h","localhost" ]
+      timeout: 10s
+      retries: 10
+    volumes: 
+      - electionsdbdata:/var/lib/mysql
+    networks:
+      - myappnet
+      - myadminnet
+      - myredisnet
+  applicationDBMigration:
+    image: applicationdbmigration_image
+    environment:
+      - DATABASE_URL=electionsDB
+    networks:
+      - myappnet
+  admin:
+    image: admin_image
+    environment:
+      - DATABASE_URL=electionsDB
+    ports:
+      - 5003:5003
+    networks:
+      - myadminnet
+  daemon:
+    image: daemon_image
+    environment:
+      - DATABASE_URL=electionsDB
+    ports:
+      - 5005:5005
+    networks:
+      - myredisnet
+      - mydaemonnet
+  votingStation:
+    image: votingstation_image
+    environment:
+      - DATABASE_URL=electionsDB
+    ports:
+      - 5004:5004
+    networks:
+      - myredisnet
+    deploy:
+      replicas: 3
+
+volumes:
+  authdbdata:
+  electionsdbdata:
+
+networks:
+  myauthnet:
+    driver: overlay
+  myappnet:
+    driver: overlay
+  myredisnet:
+    driver: overlay
+  myadminnet:
+    driver: overlay
+  mydaemonnet:
+    driver: overlay
